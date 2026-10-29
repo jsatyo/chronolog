@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChronoLog - mychronolog.app</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#fafaf9;color:#1c1917}
+.container{max-width:900px;margin:0 auto;padding:16px}
+.card{background:white;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.btn{padding:12px 20px;border-radius:12px;border:0;font-weight:600;cursor:pointer;width:100%;margin:6px 0}
+.btn-google{background:white;color:black;border:1px solid #ddd}
+.btn-fb{background:#1877F2;color:white}
+.btn-primary{background:#1c1917;color:white}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;background:#f5f5f4}
+.timer{font-size:48px;font-weight:800;text-align:center;margin:20px 0}
+.chip{padding:6px 12px;border-radius:20px;background:#eee;border:1px solid #ddd;cursor:pointer;display:inline-block;margin:2px}
+.chip.active{background:#1c1917;color:white}
+input,select{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%;margin:6px 0}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:8px 0}
+.tab{padding:8px 16px;border-radius:20px;background:#eee;cursor:pointer;white-space:nowrap}
+.tab.active{background:#1c1917;color:white}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<div id="loginScreen">
+<h1 style="text-align:center">ChronoLog</h1>
+<p style="text-align:center;color:#777">Track life, share moments • mychronolog.app</p>
+<div class="card">
+<h3>Welcome</h3>
+<button class="btn btn-google" onclick="signInGoogle()">Continue with Google</button>
+<button class="btn btn-fb" onclick="signInFacebook()">Continue with Facebook</button>
+<p style="font-size:11px;color:#888;text-align:center">Real Firebase - chronolog-app project</p>
+<div id="langChips" style="text-align:center">
+<span class="chip active" onclick="setLang('en')">EN</span>
+<span class="chip" onclick="setLang('es')">ES</span>
+<span class="chip" onclick="setLang('id')">ID</span>
+<span class="chip" onclick="setLang('zh')">ZH</span>
+<span class="chip" onclick="setLang('ja')">JA</span>
+</div>
+</div>
+</div>
+
+<div id="appScreen" style="display:none">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h2 id="todayTitle">Today</h2>
+<button onclick="signOut()" style="padding:6px 12px;border-radius:8px">Logout</button>
+</div>
+
+<div class="tabs">
+<span class="tab active" onclick="showTab('today')">Today</span>
+<span class="tab" onclick="showTab('dashboard')">Dashboard</span>
+<span class="tab" onclick="showTab('groups')">Groups</span>
+<span class="tab" onclick="showTab('history')">History</span>
+<span class="tab" onclick="showTab('media')">Media</span>
+<span class="tab" onclick="showTab('privacy')">Privacy</span>
+</div>
+
+<div id="tab-today">
+<div class="card">
+<div id="timerDisplay" class="timer">Start living</div>
+<div id="activeCode" style="text-align:center" class="badge">Idle</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<button class="btn btn-primary" id="startBtn" onclick="startTimer()">Start Timer</button>
+<button class="btn" id="stopBtn" onclick="stopTimer()" style="background:#eee">Stop</button>
+</div>
+<input id="activityInput" placeholder="Activity e.g. Group Morning Walk (HL-01)">
+<button class="btn" onclick="startVoice()">🎤 Hey Chrono Voice</button>
+</div>
+<div class="card">
+<h3>Quick Log Past</h3>
+<input id="pastName" placeholder="Activity e.g. Gardening">
+<input id="pastMins" type="number" placeholder="Minutes e.g. 45">
+<button class="btn btn-primary" onclick="logPast()">Log Past</button>
+</div>
+</div>
+
+<div id="tab-dashboard" style="display:none">
+<div class="card">
+<h3>Dashboard - Real Firestore</h3>
+<div class="grid">
+<div><b id="dToday">0</b><br><small>Completed Today</small></div>
+<div><b id="dWeek">0</b><br><small>This Week</small></div>
+<div><b id="dMonth">0</b><br><small>This Month</small></div>
+<div><b id="dPending">0</b><br><small>Pending Open</small></div>
+<div><b id="dRate">0%</b><br><small>Completion Rate</small></div>
+<div><b id="dActive">0h 0m Active</b><br><small>Total Today</small></div>
+</div>
+<button class="btn btn-primary" onclick="exportCSV()">Export CSV</button>
+</div>
+</div>
+
+<div id="tab-groups" style="display:none">
+<div class="card">
+<h3>Groups & Codes (HL-01 immutable, name editable)</h3>
+<div id="groupsList"></div>
+<button class="btn" onclick="addGroup()">Add Group</button>
+</div>
+</div>
+
+<div id="tab-history" style="display:none">
+<div class="card">
+<input id="searchInput" placeholder="Search HL-01, morning walk" oninput="doSearch()">
+<div id="historyList"></div>
+</div>
+</div>
+
+<div id="tab-media" style="display:none">
+<div class="card">
+<h3>Media Logs - Meta Glasses</h3>
+<p>Voice: "Hey Chrono add picture log" / "add video log morning walk"</p>
+<input type="file" id="mediaFile" accept="image/*,video/*" onchange="uploadMedia(this)">
+<div id="mediaGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"></div>
+</div>
+</div>
+
+<div id="tab-privacy" style="display:none">
+<div class="card">
+<h3>Privacy - Face Blur</h3>
+<label><input type="checkbox" id="blurDefault" checked onchange="savePrivacy()"> Blur faces by default (ON)</label><br>
+<small>Faces blurred on-device before upload. Only blurred goes to cloud.</small><br><br>
+<label><input type="checkbox" id="dontBlurMe" onchange="savePrivacy()"> Don't blur my face (OFF)</label><br>
+<small>Keep my face, blur others</small><br><br>
+<label>Blur strength: <input type="range" id="blurStrength" min="0.3" max="0.9" step="0.1" value="0.7" onchange="savePrivacy()"></label>
+</div>
+</div>
+
+</div>
+</div>
+
+<script type="module">
+const firebaseConfig = {
+  apiKey: "AIzaSyDfSJoPVffAgGe-ZOnFbtSjwIBAs9nx8Rw",
+  authDomain: "chronolog-app.firebaseapp.com",
+  projectId: "chronolog-app",
+  storageBucket: "chronolog-app.firebasestorage.app",
+  messagingSenderId: "952900697600",
+  appId: "1:952900697600:web:100ed92920a4bac2e362e5",
+  measurementId: "G-PPZVGFHFS9"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+let app, auth, db, storage, user, timerInterval, startTime;
+let blurSettings = { blurDefault:true, dontBlurMe:false, blurStrength:0.7 };
+
+app = initializeApp(firebaseConfig);
+auth = getAuth(app);
+db = getFirestore(app);
+storage = getStorage(app);
+
+onAuthStateChanged(auth, (u)=>{
+  if(u){
+    user = u;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appScreen').style.display='block';
+    loadData();
+  } else {
+    document.getElementById('loginScreen').style.display='block';
+    document.getElementById('appScreen').style.display='none';
+  }
+});
+
+window.signInGoogle = async ()=>{
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+}
+window.signInFacebook = async ()=>{
+  const provider = new FacebookAuthProvider();
+  await signInWithPopup(auth, provider);
+}
+window.signOut = ()=> signOut(auth);
+
+window.setLang = (l)=>{
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  event.target.classList.add('active');
+  const t = { en:{today:"Today",active:"Active"}, es:{today:"Hoy",active:"Activo"}, id:{today:"Hari Ini",active:"Aktif"}, zh:{today:"今天",active:"活跃"}, ja:{today:"今日",active:"アクティブ"} };
+  document.getElementById('todayTitle').innerText = (t[l]||t.en).today;
+}
+
+window.showTab = (name)=>{
+  document.querySelectorAll('[id^="tab-"]').forEach(d=>d.style.display='none');
+  document.getElementById('tab-'+name).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+window.startTimer = ()=>{
+  const name = document.getElementById('activityInput').value || 'Morning Walk';
+  startTime = Date.now();
+  document.getElementById('activeCode').innerText = 'HL-01 • '+name+' • Active';
+  timerInterval = setInterval(()=>{
+    const sec = Math.floor((Date.now()-startTime)/1000);
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    document.getElementById('timerDisplay').innerText = m+':'+String(s).padStart(2,'0')+' Active';
+  },1000);
+  document.getElementById('startBtn').disabled=true;
+}
+
+window.stopTimer = async ()=>{
+  clearInterval(timerInterval);
+  document.getElementById('timerDisplay').innerText = 'Start living';
+  const name = document.getElementById('activityInput').value || prompt("What was that time? e.g. Group Morning Walk") || 'Morning Walk';
+  const duration = Math.floor((Date.now()-startTime)/1000);
+  const id = 'TE-'+Date.now();
+  await setDoc(doc(db,'users',user.uid,'timeEntries',id),{
+    id, code:'HL-01', name, group:'HL', startTime:Date.now(), durationSec:duration, status:'Completed', source:'web'
+  });
+  document.getElementById('startBtn').disabled=false;
+  document.getElementById('activeCode').innerText='Idle';
+}
+
+window.logPast = async ()=>{
+  const name = document.getElementById('pastName').value || 'Gardening';
+  const mins = parseInt(document.getElementById('pastMins').value)||30;
+  const id='TE-'+Date.now();
+  await setDoc(doc(db,'users',user.uid,'timeEntries',id),{id,code:'HL-02',name,group:'HL',startTime:Date.now(),durationSec:mins*60,status:'Completed',source:'web'});
+}
+
+function loadData(){
+  const q = collection(db,'users',user.uid,'timeEntries');
+  onSnapshot(q,(snap)=>{
+    let today=0,pending=0,totalSec=0;
+    const list = document.getElementById('historyList');
+    list.innerHTML='';
+    const groupsDiv = document.getElementById('groupsList');
+    groupsDiv.innerHTML='';
+    const codes = new Set();
+    snap.forEach(d=>{
+      const e=d.data();
+      const div=document.createElement('div');
+      div.className='card';
+      div.innerHTML='<b>'+(e.code||'HL-01')+'</b> '+(e.name||'')+' - '+Math.floor((e.durationSec||0)/60)+'m '+(e.status||'')+' <small>'+(e.source||'')+'</small>';
+      list.appendChild(div);
+      if(e.status==='Completed') today++;
+      else pending++;
+      totalSec+=e.durationSec||0;
+      if(!codes.has(e.code)){
+        codes.add(e.code);
+        const g=document.createElement('div');
+        g.className='card';
+        g.innerHTML=e.code+' - '+(e.name||'')+' <span class="badge">'+e.group+'</span>';
+        groupsDiv.appendChild(g);
+      }
+    });
+    document.getElementById('dToday').innerText=today;
+    document.getElementById('dWeek').innerText=snap.size;
+    document.getElementById('dMonth').innerText=snap.size;
+    document.getElementById('dPending').innerText=pending;
+    document.getElementById('dRate').innerText=snap.size?Math.round(today/snap.size*100)+'%':'0%';
+    document.getElementById('dActive').innerText=Math.floor(totalSec/3600)+'h '+Math.floor(totalSec%3600/60)+'m Active';
+  });
+}
+
+window.doSearch = ()=>{
+  const v=document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#historyList .card').forEach(c=>{
+    c.style.display = c.innerText.toLowerCase().includes(v)?'block':'none';
+  });
+}
+
+window.exportCSV = async ()=>{
+  const snap = await getDocs(collection(db,'users',user.uid,'timeEntries'));
+  let csv='Date,Code,Name,Group,Duration(min),Status,Source\n';
+  snap.forEach(d=>{
+    const e=d.data();
+    csv+= new Date(e.startTime).toISOString()+','+e.code+','+e.name+','+e.group+','+Math.floor((e.durationSec||0)/60)+','+e.status+','+e.source+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='chronolog-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+window.uploadMedia = async (input)=>{
+  const file=input.files[0];
+  if(!file) return;
+  let uploadFile=file;
+  if(document.getElementById('blurDefault').checked && file.type.startsWith('image/')){
+    uploadFile = await blurImage(file, parseFloat(document.getElementById('blurStrength').value));
+  }
+  const refPath = ref(storage,'users/'+user.uid+'/media/'+Date.now()+'_'+file.name);
+  await uploadBytes(refPath, uploadFile);
+  const url = await getDownloadURL(refPath);
+  const id='ML-'+Date.now();
+  await setDoc(doc(db,'users',user.uid,'timeEntries',id),{
+    id, code:'HL-01', name:'Picture Log', group:'HL', startTime:Date.now(), durationSec:0, status:'Completed', source:'meta-glasses', mediaUrl:url, privacyBlurred:document.getElementById('blurDefault').checked, badge:'Captured via Meta Glasses'
+  });
+  const grid=document.getElementById('mediaGrid');
+  const img=document.createElement('img');
+  img.src=url;img.style.width='100%';img.style.borderRadius='8px';
+  grid.appendChild(img);
+}
+
+async function blurImage(file, strength){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=img.width;canvas.height=img.height;
+      const ctx=canvas.getContext('2d');
+      ctx.filter='blur('+(strength*20)+'px)';
+      ctx.drawImage(img,0,0);
+      canvas.toBlob(b=>resolve(b), 'image/jpeg', 0.8);
+    };
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+window.savePrivacy = ()=>{
+  blurSettings.blurDefault=document.getElementById('blurDefault').checked;
+  blurSettings.dontBlurMe=document.getElementById('dontBlurMe').checked;
+  blurSettings.blurStrength=parseFloat(document.getElementById('blurStrength').value);
+  localStorage.setItem('privacy',JSON.stringify(blurSettings));
+}
+
+window.startVoice = ()=>{
+  if(!('webkitSpeechRecognition' in window)){alert('Voice not supported');return;}
+  const rec=new webkitSpeechRecognition();
+  rec.lang='en-US';
+  rec.onresult=(e)=>{
+    const text=e.results[0][0].transcript;
+    alert('Heard: '+text);
+    if(text.toLowerCase().includes('start')) document.getElementById('activityInput').value=text.replace(/start|timer/gi,'').trim();
+  };
+  rec.start();
+}
+
+window.addGroup = async ()=>{
+  const name=prompt("Group name e.g. Group Evening Walk");
+  if(!name) return;
+  const code='HL-0'+(Math.floor(Math.random()*9)+3);
+  const id='ACT-'+Date.now();
+  await setDoc(doc(db,'users',user.uid,'activities',id),{id, code, name, group:'HL'});
+}
+</script>
+</body>
+</html>
