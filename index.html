@@ -174,7 +174,12 @@ window.signInGoogle = async ()=>{
 }
 window.signInFacebook = async ()=>{
   const provider = new FacebookAuthProvider();
-  await signInWithPopup(auth, provider);
+  provider.addScope('public_profile');
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    alert('Facebook error: '+(e.message||'')+' Code: '+(e.code||'')+' Fix in developers.facebook.com');
+  }
 }
 window.signOut = ()=> signOut(auth);
 
